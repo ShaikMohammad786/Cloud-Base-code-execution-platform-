@@ -55,9 +55,7 @@ function initHandlers(socket: Socket, replId: string) {
         callback(data);
     });
 
-    // TODO: contents should be diff, not full file
-    // Should be validated for size
-    // Should be throttled before updating S3 (or use an S3 mount)
+   
     socket.on("updateContent", async ({ path: filePath, content }: { path: string, content: string }) => {
         const fullPath =  `/workspace/${filePath}`;
         await saveFile(fullPath, content);

@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(cors())
 
 app.post("/project", async (req, res) => {
-    // Hit a database to ensure this slug isn't taken already
+ 
     const { replId, language } = req.body;
 
     if (!replId) {

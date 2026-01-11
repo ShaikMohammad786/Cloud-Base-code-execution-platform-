@@ -23,19 +23,21 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >
-              aws s3 cp s3://repl/code/service_name/ /workspace/ --recursive &&
+              aws s3 cp s3://cloudcoderepl/code/service_name/ /workspace/ --recursive &&
               echo "Resources copied from S3";
           env:
             - name: AWS_ACCESS_KEY_ID
-              value: "your_aws_key_id"
+              value: "your AWS_ACCESS_KEY_ID"
             - name: AWS_SECRET_ACCESS_KEY
-              value: "your_aws_secret"
+              value: "your AWS_SECRET_ACCESS_KEY"
+            - name: AWS_DEFAULT_REGION
+              value: "your AWS_DEFAULT_REGION"
           volumeMounts:
             - name: workspace-volume
               mountPath: /workspace
       containers:
         - name: runner
-          image: 100xdevs/runner:latest
+          image: skmohammad/runner:latest
           ports:
             - containerPort: 3001
             - containerPort: 3000
@@ -43,10 +45,9 @@ spec:
             - name: workspace-volume
               mountPath: /workspace
           resources:
-            # Bounty $25 Use ephemeral-storage to add space limits here
             requests:
-              cpu: "1"
-              memory: "1Gi"
+              cpu: "500m"
+              memory: "512Mi"
             limits:
               cpu: "1"
               memory: "1Gi"
@@ -73,10 +74,14 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: service_name
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "service_name"
 spec:
   ingressClassName: nginx
   rules:
-  - host: service_name.peetcode.com
+  - host: service_name.cloudcode.work.gd
     http:
       paths:
       - path: /
@@ -86,7 +91,7 @@ spec:
             name: service_name
             port:
               number: 3001
-  - host: service_name.autogpt-cloud.com
+  - host: service_name.cloudcodeterminal.work.gd
     http:
       paths:
       - path: /

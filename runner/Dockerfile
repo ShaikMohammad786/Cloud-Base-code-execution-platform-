@@ -1,24 +1,26 @@
-# Use the official Node.js 14 as a parent image
+# Use the official Node.js 20 as a parent image
 FROM node:20
+
+# Install Python3 and pip
+RUN apt-get update && apt-get install -y python3 python3-pip
 
 # Set the working directory in the container
 WORKDIR /code
 
-# Copy package.json and package-lock.json (if available) to the working directory
+# Copy package.json and package-lock.json first (for better caching)
 COPY package*.json ./
 
-# Install any dependencies
+# Install Node dependencies
 RUN npm install
 
-# Copy the rest of your application's code to the working directory
+# Copy the rest of the application code
 COPY . .
 
 # Build your app
 RUN npm run build
 
-# Your app binds to port 3000 so you'll use the EXPOSE instruction to have it mapped by the docker daemon
+# Expose ports
 EXPOSE 3000
 
-# Define the command to run your app using CMD which defines your runtime
+# Define the command to run your app
 CMD [ "node", "dist/index.js" ]
-

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Sidebar from "./external/editor/components/sidebar";
 import { Code } from "./external/editor/editor/code";
 import styled from "@emotion/styled";
@@ -6,31 +6,30 @@ import { File, buildFileTree, RemoteFile } from "./external/editor/utils/file-ma
 import { FileTree } from "./external/editor/components/file-tree";
 import { Socket } from "socket.io-client";
 
-// credits - https://codesandbox.io/s/monaco-tree-pec7u
 export const Editor = ({
-    files,
-    onSelect,
-    selectedFile,
-    socket
+  files,
+  onSelect,
+  selectedFile,
+  socket
 }: {
-    files: RemoteFile[];
-    onSelect: (file: File) => void;
-    selectedFile: File | undefined;
-    socket: Socket;
+  files: RemoteFile[];
+  onSelect: (file: File) => void;
+  selectedFile: File | undefined;
+  socket: Socket;
 }) => {
   const rootDir = useMemo(() => {
     return buildFileTree(files);
   }, [files]);
 
   useEffect(() => {
-    if (!selectedFile) {
+    if (!selectedFile && rootDir.files && rootDir.files.length > 0) {
       onSelect(rootDir.files[0])
     }
-  }, [selectedFile])
+  }, [selectedFile, rootDir])
 
   return (
-    <div>
-      <Main>
+    <Container>
+      <SidebarContainer>
         <Sidebar>
           <FileTree
             rootDir={rootDir}
@@ -38,12 +37,32 @@ export const Editor = ({
             onSelect={onSelect}
           />
         </Sidebar>
+      </SidebarContainer>
+      <EditorArea>
         <Code socket={socket} selectedFile={selectedFile} />
-      </Main>
-    </div>
+      </EditorArea>
+    </Container>
   );
 };
 
-const Main = styled.main`
+// Styled components consistent with the new theme
+const Container = styled.div`
   display: flex;
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-primary);
+`;
+
+const SidebarContainer = styled.div`
+  width: 250px;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+`;
+
+const EditorArea = styled.div`
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--bg-primary);
 `;

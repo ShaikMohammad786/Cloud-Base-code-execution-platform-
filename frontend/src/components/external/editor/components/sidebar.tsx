@@ -1,7 +1,7 @@
-import React, {ReactNode} from 'react';
+import { ReactNode } from 'react';
 import styled from "@emotion/styled";
 
-export const Sidebar = ({children}: { children: ReactNode }) => {
+export const Sidebar = ({ children }: { children: ReactNode }) => {
   return (
     <Aside>
       {children}
@@ -10,10 +10,9 @@ export const Sidebar = ({children}: { children: ReactNode }) => {
 }
 
 const Aside = styled.aside`
-  width: 250px;
-  height: 100vh;
-  border-right: 2px solid;
-  border-color: #242424;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-secondary);
   padding-top: 3px;
 `
 

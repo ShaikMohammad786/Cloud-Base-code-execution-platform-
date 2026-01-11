@@ -1,4 +1,4 @@
-//@ts-ignore => someone fix this
+//@ts-ignore 
 import { fork, IPty } from 'node-pty';
 import path from "path";
 

@@ -6,13 +6,13 @@
   "dependencies": {
     "@kubernetes/client-node": "^0.20.0",
     "@types/cors": "^2.8.17",
-    "aws-sdk": "^2.1556.0",
+    "aws-sdk": "^2.1693.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.3",
-    "express": "^4.18.2",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
     "nodemon": "^3.0.3",
     "ts-node": "^10.9.2",
-    "yaml": "^2.3.4"
+    "yaml": "^2.8.2"
   },
   "scripts": {
     "build": "tsc -b",

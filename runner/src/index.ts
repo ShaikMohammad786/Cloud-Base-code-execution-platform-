@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { initWs } from "./ws";
 import cors from "cors";
 
+// Socket.IO server on port 3001
 const app = express();
 app.use(cors());
 const httpServer = createServer(app);

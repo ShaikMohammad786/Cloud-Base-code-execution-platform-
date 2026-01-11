@@ -1,14 +1,18 @@
 import { S3 } from "aws-sdk"
 import fs from "fs";
 import path from "path";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const s3 = new S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    endpoint: process.env.S3_ENDPOINT
+    // endpoint: process.env.S3_ENDPOINT
 })
 
 export async function copyS3Folder(sourcePrefix: string, destinationPrefix: string, continuationToken?: string): Promise<void> {
+
     try {
         // List all objects in the source folder
         const listParams = {
@@ -22,7 +26,7 @@ export async function copyS3Folder(sourcePrefix: string, destinationPrefix: stri
         if (!listedObjects.Contents || listedObjects.Contents.length === 0) return;
         
         // Copy each object to the new location
-        // We're doing it parallely here, using promise.all()
+        // doing it parallely here, using promise.all()
         await Promise.all(listedObjects.Contents.map(async (object) => {
             if (!object.Key) return;
             let destinationKey = object.Key.replace(sourcePrefix, destinationPrefix);

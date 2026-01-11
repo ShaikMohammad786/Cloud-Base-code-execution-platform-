@@ -14,11 +14,13 @@ const OPTIONS_TERM = {
     cursorBlink: true,
     cols: 200,
     theme: {
-        background: "black"
+        background: '#161b22', /* var(--bg-secondary) */
+        foreground: '#c9d1d9', /* var(--text-primary) */
     }
 };
-export const TerminalComponent = ({ socket }: {socket: Socket}) => {
-    const terminalRef = useRef();
+
+export const TerminalComponent = ({ socket }: { socket: Socket }) => {
+    const terminalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!terminalRef || !terminalRef.current || !socket) {
@@ -31,7 +33,12 @@ export const TerminalComponent = ({ socket }: {socket: Socket}) => {
         term.loadAddon(fitAddon);
         term.open(terminalRef.current);
         fitAddon.fit();
-        function terminalHandler({ data }) {
+
+        // Handle window resize
+        const handleResize = () => fitAddon.fit();
+        window.addEventListener('resize', handleResize);
+
+        function terminalHandler({ data }: { data: ArrayBuffer | string }) {
             if (data instanceof ArrayBuffer) {
                 console.error(data);
                 console.log(ab2str(data))
@@ -49,11 +56,11 @@ export const TerminalComponent = ({ socket }: {socket: Socket}) => {
         });
 
         return () => {
-            socket.off("terminal")
+            socket.off("terminal");
+            window.removeEventListener('resize', handleResize);
+            term.dispose();
         }
-    }, [terminalRef]);
+    }, [terminalRef, socket]);
 
-    return <div style={{width: "40vw", height: "400px", textAlign: "left"}} ref={terminalRef}>
-        
-    </div>
+    return <div style={{ width: "100%", height: "100%", textAlign: "left" }} ref={terminalRef} />
 }

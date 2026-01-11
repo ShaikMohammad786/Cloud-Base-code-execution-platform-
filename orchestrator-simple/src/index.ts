@@ -33,6 +33,20 @@ app.post("/start", async (req, res) => {
     const namespace = "default"; // Assuming a default namespace, adjust as needed
 
     try {
+        // Check if deployment already exists
+        try {
+            const existingDeployment = await appsV1Api.readNamespacedDeployment(replId, namespace);
+            if (existingDeployment) {
+                console.log(`Deployment ${replId} already exists`);
+                return res.status(200).send({ message: "Resources already exist" });
+            }
+        } catch (error: any) {
+            // Deployment doesn't exist, continue with creation
+            if (error.statusCode !== 404) {
+                throw error;
+            }
+        }
+
         const kubeManifests = readAndParseKubeYaml(path.join(__dirname, "../service.yaml"), replId);
         for (const manifest of kubeManifests) {
             switch (manifest.kind) {
