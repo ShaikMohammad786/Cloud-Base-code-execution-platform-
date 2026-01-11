@@ -1,149 +1,202 @@
 # Cloud-Based Code Execution Platform 🚀
 
-A powerful, cloud-native online code editor and execution environment (REPL) built with a microservices architecture. It allows users to create, code, and execute projects in isolated containers with real-time feedback, similar to platforms like Replit or CodeSandbox.
+> **A scalable, cloud-native online IDE and code execution environment designed for modern developers.**
+
+This platform functionality mimics huge industry players like **Replit**, **CodeSandbox**, and **GitHub Codespaces**. It provides users with instant, isolated coding environments where they can write code, run it in a real terminal, and see the output immediately—all within their browser.
 
 ---
 
-## 🎯 Key Features
 
-- **⚡ Instant Environments**: Spin up isolated Node.js or Python environments in seconds.
-- **🛠️ Rich Code Editor**: Full-featured IDE experience powered by Monaco Editor.
-- **💻 Interactive Terminal**: Real-time shell access via xterm.js (sh/bash).
-- **☁️ Cloud Persistence**: Automatic file syncing and storage using AWS S3.
-- **🛑 Scalable Orchestration**: Dynamic pod management using Kubernetes (K8s).
-- **🔄 Real-time Communication**: Low-latency file operations and terminal streaming via WebSockets.
-- **🎨 Modern UI**: Sleek, dark-themed interface with responsive side-by-side layout.
+## 🎯 Overview
 
----
+Building a cloud IDE is complex because it requires executing untrusted user code securely. This platform solves that challenge by using **Kubernetes** to spin up a new, isolated **Docker container (Pod)** for *every single project*.
 
-## 🏗️ Architecture
-
-The system consists of four main components interacting to provide a seamless development experience:
-
-### 1. **Frontend Service** (`/frontend`)
-- **Tech Stack**: React, Vite, TypeScript, Emotion, Monaco Editor, Socket.io-client.
-- **Port**: `5173` (Development)
-- **Role**: User interface for project creation, coding, and terminal interaction.
-- **Key Routes**:
-    - `/`: Landing page for creating a new REPL.
-    - `/coding/?replId=...`: Main IDE workspace.
-
-### 2. **Init Service** (`/init-service`)
-- **Tech Stack**: Express, TypeScript, AWS SDK.
-- **Port**: `3001` (Default)
-- **Role**: Handles the initial creation of projects.
-- **Endpoints**:
-    - `POST /project`: Accepts `replId` and `language`. Copies the base language template from S3 to the project's S3 folder (`code/{replId}`).
-
-### 3. **Orchestrator Service** (`/orchestrator-simple`)
-- **Tech Stack**: Express, TypeScript, Kubernetes Client (`@kubernetes/client-node`).
-- **Port**: `3002` (Default)
-- **Role**: Manages the lifecycle of user containers (pods).
-- **Endpoints**:
-    - `POST /start`: Accepts `replId`. Creates a K8s Deployment, Service, and Ingress for that specific project.
-
-### 4. **Runner Service** (`/runner`)
-- **Tech Stack**: Node.js, Express, Socket.io, Node-pty, AWS SDK.
-- **Port**: `3001` (Runs inside the User Pod)
-- **Role**: The actual execution environment. It runs inside the generated K8s pod.
-    - Manages the pseudo-terminal (PTY) session.
-    - Handles file system operations (read/write).
-    - Syncs files between the container and S3.
+When a user creates a project (Repl), the system:
+1.  **Orchestrates**: Provisions a fresh K8s Pod.
+2.  **Initializes**: Pulls the user's code from AWS S3 into the Pod.
+3.  **Connects**: Establishes a WebSocket connection for real-time file editing and terminal access.
 
 ---
 
-## 🔄 System Flow
+## ✨ Key Features
 
-1.  **Project Creation**: 
-    - User enters a name and selecting a language on the **Frontend**.
-    - Frontend calls **Init Service** (`POST /project`).
-    - **Init Service** copies the language template (e.g., `base/python`) to the user's S3 directory used for persistence.
+### 🎨 Frontend
+- **Monaco Editor Integration**: The same editor engine that powers VS Code.
+- **Xterm.js Terminal**: A full-featured, interactive terminal in the browser.
+- **Side-by-Side Layout**: Responsive design (Editor | Terminal) for productivity.
+- **Multi-language**: Supports `Node.js` and `Python`.
 
-2.  **Environment Boot**:
-    - Frontend redirects to the Coding Page.
-    - Frontend calls **Orchestrator** (`POST /start`).
-    - **Orchestrator** talks to the **Kubernetes API** to create a Pod running the **Runner Service**.
-    - An *Init Container* in the Pod downloads the user's code from S3 to the container's volume.
+### ⚙️ Backend & Infrastructure
+- **Container Isolation**: Each session runs in its own generic Docker container.
+- **Dynamic Ingress**: Uses Nginx Ingress Controller to route traffic via subdomains.
+- **Persistent Storage**: All code is seamlessly synced to **AWS S3**.
+- **Dual-Domain Security**: Separates the IDE environment from the User's running application Output.
 
-3.  **Connection & Coding**:
-    - Once the Pod is ready, Frontend connects to the **Runner** via **WebSockets**.
-    - **Runner** sends the file tree.
-    - **File Edits**: Changes are sent to Runner, which writes to disk and syncs updates back to S3.
-    - **Terminal**: Commands (e.g., `npm start`, `python main.py`) are sent via socket, executed by `node-pty`, and output is streamed back.
+---
+
+## 🏗️ System Architecture
+
+### High-Level Design
+
+The system follows an **Event-Drive Microservices Architecture**.
+
+1.  **User** visits the Frontend.
+2.  **Frontend** asks **Init Service** to create a project record (folder in S3).
+3.  **Frontend** asks **Orchestrator** to spin up computing resources.
+4.  **Orchestrator** instructs **Kubernetes** to deploy a `Runner` Pod.
+5.  **Frontend** connects directly to the `Runner` Pod via WebSockets.
+
+### Microservices Breakdown
+
+| Service | Path | Port | Tech Stack | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Frontend** | `/frontend` | `5173` | React, Vite, TS | User Interface. Connects via WebSocket. |
+| **Init Service** | `/init-service` | `3001` | Express, AWS SDK | "Control Plane". Handles S3 template creation. |
+| **Orchestrator** | `/orchestrator` | `3002` | Express, K8s Client | "Infrastructure Plane". Manages K8s Pods. |
+| **Runner** | `/runner` | `3001` | Node.js, Socket.io | "Data Plane". Runs *inside* the user's Pod. |
+
+### Network & Domain Architecture
+
+This project uses a **Dual-Domain Strategy** to isolate the IDE communication from the user's running application (like a preview window).
+
+1.  **IDE Connection (`*.cloudcode.work.gd`)**:
+    *   **Port 3001**
+    *   Used for **WebSockets** (File editing, Terminal streams).
+    *   The `Runner` service listens here.
+
+2.  **User Output (`*.cloudcodeterminal.work.gd`)**:
+    *   **Port 3000**
+    *   Used to serve the user's running web application (e.g., if they run `npm start`).
+    *   This ensures cross-site scripting (XSS) in user code doesn't affect the main IDE.
+
+**Ingress Routing Rule:**
+*   Request to `<replId>.cloudcode.work.gd` -> Routes to Pod Service Port 3001.
+*   Request to `<replId>.cloudcodeterminal.work.gd` -> Routes to Pod Service Port 3000.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18+)
-- Docker & Kubernetes Cluster (Minikube, Docker Desktop, or Cloud Provider)
-- AWS Account (for S3)
 
-### 1. Configuration (Environment Variables)
+*   **Node.js 18+** installed locally.
+*   **Docker Desktop** (or Minikube) running with Kubernetes enabled.
+*   **AWS Account** with an S3 Bucket created.
+*   **Kubectl** configured to talk to your local cluster.
 
-Create `.env` files in `init-service`, `orchestrator-simple`, and `runner` (or configure your K8s deployment) with the following:
+### Installation (Local Dev)
+
+1.  **Clone the Repo**:
+    ```bash
+    git clone https://github.com/ShaikMohammad786/Cloud-Base-code-execution-platform-.git
+    cd Cloud-Base-code-execution-platform-
+    ```
+
+2.  **Install Dependencies**:
+    ```bash
+    # Run this in all service directories
+    npm install --prefix frontend
+    npm install --prefix init-service
+    npm install --prefix orchestrator-simple
+    npm install --prefix runner
+    ```
+
+3.  **Start Services** (Separate Terminals):
+    ```bash
+    # Terminal 1: Frontend
+    cd frontend && npm run dev
+    
+    # Terminal 2: Init Service
+    cd init-service && npm run dev
+    
+    # Terminal 3: Orchestrator
+    cd orchestrator-simple && npm run dev
+    ```
+
+### Configuration
+
+Create a `.env` file in `init-service`, `orchestrator-simple`, and `runner`:
 
 ```env
-PORT=3001 (or 3002 for orchestrator)
+PORT=3001  # Use 3002 for Orchestrator
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-S3_BUCKET=your_s3_bucket_name
-# Optional: S3_ENDPOINT if using MinIO or compatible storage
+S3_BUCKET=your-bucket-name
 ```
 
-### 2. S3 Setup
-Ensure your S3 bucket has a `base/` directory containing your language templates:
-- `s3://your-bucket/base/node-js/`
-- `s3://your-bucket/base/python/`
+### DNS & Ingress Setup
 
-### 3. Installation & Local Development
+**CRITICAL STEP**: You must configure DNS to route wildcard subdomains to your Ingress Controller (Nginx).
 
-Run the following in separate terminals:
+1.  **Install Nginx Ingress**:
+    ```bash
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+    ```
 
-**Frontend**:
-```bash
-cd frontend
-npm install
-npm run dev
-```
+2.  **Get Ingress IP**:
+    ```bash
+    kubectl get services -n ingress-nginx
+    # Look for EXTERNAL-IP
+    ```
 
-**Init Service**:
-```bash
-cd init-service
-npm install
-npm run dev
-```
+3.  **Configure DNS** (e.g., in GoDaddy, Cloudflare, or `/etc/hosts`):
+    *   Create an `A` record for `*.cloudcode.work.gd` pointing to your Ingress IP.
+    *   Create an `A` record for `*.cloudcodeterminal.work.gd` pointing to your Ingress IP.
 
-**Orchestrator Service**:
-```bash
-cd orchestrator-simple
-npm install
-npm run dev
-```
-
-*Note: The **Runner Service** is designed to run inside Kubernetes. For local listing, you may need to mock the connection or manually build/run the Docker image.*
-
-### 4. Kubernetes Deployment (Orchestrator)
-
-Update `orchestrator-simple/service.yaml` with your generic pod configuration and AWS credentials (or use K8s secrets).
+    *If running locally (Minikube), you must add these entries to your local `/etc/hosts` file for every new Repl ID you test, or use a tool like `dnsmasq`.*
 
 ---
 
-## 📡 WebSocket Events (Runner)
+## 📡 API Reference
 
-| Event Name | Direction | Payload | Description |
-|:--- |:--- |:--- |:--- |
-| `loaded` | Server -> Client | `{ rootContent: RemoteFile[] }` | Emitted when connection is established and files are loaded. |
-| `fetchDir` | Client -> Server | `path: string` | Requests contents of a directory. Callback returns `files`. |
-| `fetchContent` | Client -> Server | `{ path: string }` | Requests content of a specific file. |
-| `updateContent` | Client -> Server | `{ path: string, content: string }` | Saves new content to file and syncs to S3. |
-| `requestTerminal` | Client -> Server | `{}` | Requests creation of a PTY session. |
-| `terminalData` | Client -> Server | `{ data: string }` | Sends input (keystrokes/commands) to the terminal. |
-| `terminal` | Server -> Client | `{ data: Buffer }` | Streamed output from the terminal process. |
+### Init Service
+
+**POST** `/project`
+*   **Description**: Creates a new project id in S3.
+*   **Body**:
+    ```json
+    {
+      "replId": "my-project",
+      "language": "python"
+    }
+    ```
+
+### Orchestrator Service
+
+**POST** `/start`
+*   **Description**: Spins up the K8s pod for the project.
+*   **Body**:
+    ```json
+    {
+      "replId": "my-project"
+    }
+    ```
+
+### Runner (WebSocket Events)
+
+| Event | Payload | Description |
+| :--- | :--- | :--- |
+| `requestTerminal` | `{}` | Asks server to spawn a bash shell. |
+| `terminalData` | `{ data: "ls\r" }` | Sends keystrokes to the server. |
+| `fetchDir` | `"/src"` | Asks for file list in a folder. |
+| `updateContent` | `{ path: "/index.js", content: "..." }` | Saves file to disk and S3. |
 
 ---
 
-## 🤝 Contributing
+## 🚢 Deployment via Kubernetes
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or features.
+The `orchestrator-simple/service.yaml` file acts as a template. When you request a container, the orchestrator reads this file, replaces `service_name` with your `replId`, and applies it to the cluster.
+
+**Core Components Deployed:**
+1.  **Deployment**: 1 Replica of the Runner Image.
+2.  **Service**: ClusterIP service exposing ports 3000 (App) and 3001 (Runner).
+3.  **Ingress**: Routes traffic based on the Host header (`replId.domain.com`).
+
+---
+
+
+## 👥 Contributors
+
+- **Frontend**: React, Monaco, Xterm
+- **Backend Architecture**: Microservices
+- **DevOps**: Kubernetes, Docker, AWS S3
