@@ -1,2 +1,47 @@
+# Dependencies
 node_modules/
+
+# Build output
+dist/
+out/
+*.tgz
+
+# Environment variables (NEVER commit these)
 .env
+.env.local
+.env.*.local
+
+# Prisma generated
+prisma/generated/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Code coverage
+coverage/
+*.lcov
+
+# Caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# Lock files (optional — remove this line if you want to commit lock files)
+# bun.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Debug
+*.pem
